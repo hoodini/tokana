@@ -1,0 +1,5 @@
+node_modules/
+tokana.db
+tokana.db-*
+*.log
+.DS_Store

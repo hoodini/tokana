@@ -1,0 +1,17 @@
+{
+  "name": "tokana",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "description": "Factual token-usage analyzer for Claude Code and other LLM tools — reads the tools' own usage receipts, no estimates where receipts exist.",
+  "license": "MIT",
+  "scripts": {
+    "index": "bun run src/indexer.ts",
+    "serve": "bun run src/server.ts",
+    "dev": "bun run src/indexer.ts && bun run src/server.ts",
+    "verify": "bun run src/verify.ts"
+  },
+  "dependencies": {
+    "js-tiktoken": "^1.0.15"
+  }
+}

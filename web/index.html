@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>tokana — where your tokens actually go</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header>
+      <div class="brand">
+        <h1>tokana</h1>
+        <p>where your tokens actually go — read from Claude Code's own receipts, not estimated</p>
+      </div>
+      <div id="live" class="live off" title="Live meter — updates as you work in Claude Code">
+        <span class="dot"></span><span id="live-text">live: waiting for a session…</span>
+      </div>
+    </header>
+
+    <section id="cards" class="cards"></section>
+
+    <section class="panel">
+      <h2>Billing buckets <small>how each token was priced — this is exact</small></h2>
+      <div id="billing-bar" class="stack"></div>
+      <div id="billing-legend" class="legend"></div>
+    </section>
+
+    <div class="two-col">
+      <section class="panel">
+        <h2>By model</h2>
+        <div id="by-model"></div>
+      </section>
+      <section class="panel">
+        <h2>By project <small>top 20 by cost</small></h2>
+        <div id="by-project"></div>
+      </section>
+    </div>
+
+    <section class="panel">
+      <h2>Cost per day <small>API list-price equivalent</small></h2>
+      <div id="by-day" class="days"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Sessions <small>click a session → turns → a turn to see its context breakdown</small></h2>
+      <div id="sessions"></div>
+    </section>
+
+    <section id="drill" class="panel hidden">
+      <h2 id="drill-title">Session</h2>
+      <div id="turns"></div>
+    </section>
+
+    <section id="attr" class="panel hidden">
+      <h2>Context breakdown <small class="approx">approximate — see note</small></h2>
+      <div id="attr-body"></div>
+    </section>
+
+    <footer>
+      <strong>What's exact vs approximate.</strong>
+      Token <em>counts</em> and <em>costs</em> for Claude Code are <b>exact</b> — they're the <code>usage</code> numbers
+      Anthropic returned, deduplicated by <code>message.id</code>. The <em>context breakdown</em> below a turn is
+      <b>approximate</b>: Claude's tokenizer isn't public, and the system prompt + tool/MCP/skill schemas aren't stored
+      in the logs, so the "system/tools baseline" is a reconciled residual. Cost is <b>list/API-equivalent</b>; on Claude
+      Max your marginal cost is $0 (set <code>actualCostMultiplier</code> in <code>pricing.json</code>).
+    </footer>
+
+    <script src="/app.js"></script>
+  </body>
+</html>

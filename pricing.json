@@ -1,0 +1,12 @@
+{
+  "_comment": "LIST prices in USD per 1,000,000 tokens. These are EDITABLE defaults and may not match current Anthropic pricing for every model — verify against https://www.anthropic.com/pricing and edit. Matched by model-id prefix (longest match wins). 'actualCostMultiplier' scales list->actual: 0 means you pay per-token nothing at the margin (Claude Max/Pro subscription), 1 means you pay full API list price.",
+  "actualCostMultiplier": 0,
+  "models": {
+    "claude-opus-4":   { "input": 15, "output": 75, "cacheWrite5m": 18.75, "cacheWrite1h": 30, "cacheRead": 1.5 },
+    "claude-sonnet-4": { "input": 3,  "output": 15, "cacheWrite5m": 3.75,  "cacheWrite1h": 6,  "cacheRead": 0.3 },
+    "claude-haiku-4":  { "input": 1,  "output": 5,  "cacheWrite5m": 1.25,  "cacheWrite1h": 2,  "cacheRead": 0.1 },
+    "claude-3-5-sonnet": { "input": 3, "output": 15, "cacheWrite5m": 3.75, "cacheWrite1h": 6, "cacheRead": 0.3 },
+    "claude-3-5-haiku":  { "input": 0.8, "output": 4, "cacheWrite5m": 1.0, "cacheWrite1h": 1.6, "cacheRead": 0.08 }
+  },
+  "fallback": { "input": 15, "output": 75, "cacheWrite5m": 18.75, "cacheWrite1h": 30, "cacheRead": 1.5 }
+}
