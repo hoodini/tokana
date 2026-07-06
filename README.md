@@ -1,5 +1,17 @@
 # tokana — where your tokens actually go
 
+<p align="center">
+  <a href="https://github.com/hoodini/tokana/raw/main/media/tokana-demo.mp4">
+    <img src="media/tokana-hero.gif" alt="tokana — the real dashboard" width="100%">
+  </a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/hoodini/tokana/raw/main/media/tokana-demo.mp4"><b>▶ Watch the 60-second showcase — with sound</b></a>
+</p>
+
+https://github.com/hoodini/tokana/raw/main/media/tokana-demo.mp4
+
 **A local, offline lens on your Claude Code usage.** No API key, no network, no cloud dashboard. tokana reads the session transcripts already sitting on your disk and tells you the truth about your tokens — down to the token — including the *actual content* that filled your context window.
 
 <!-- Numbers below are a real snapshot from the author's own machine. Reproduce yours with `bun run index`. -->
