@@ -2,9 +2,10 @@
 //
 // THE CRITICAL RULE: Claude Code writes ONE JSONL LINE PER CONTENT BLOCK (thinking, text,
 // each tool_use), and every line for the same assistant response repeats the SAME `usage`
-// object under the SAME `message.id`. Summing lines naively over-counts by 3-4x. We dedup
-// by `message.id` and count each turn exactly once. This is the difference between a truthful
-// tool and a lying one.
+// object under the SAME `message.id`. Summing lines naively over-counts the billed total by
+// ~2.3x (measured over the author's full history: ~2.19 content-block lines per billed message;
+// output tokens alone over-count by ~3x). We dedup by `message.id` and count each turn exactly
+// once. This is the difference between a truthful tool and a lying one.
 import type { RawUsage, Turn } from "../core/schema.ts";
 import { toBillingBuckets } from "../core/schema.ts";
 import { priceForModel, costOf, costWithoutCache } from "../core/pricing.ts";

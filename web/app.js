@@ -132,80 +132,133 @@ async function openSession(id, project) {
   $("#drill").scrollIntoView({ behavior: "smooth" });
 }
 
-const ATTR = [
-  { key: "currentMessage", label: "your message (this turn)", css: "--pink" },
-  { key: "history", label: "conversation history", css: "--output" },
-  { key: "toolResults", label: "tool results (file reads, output)", css: "--cyan" },
-  { key: "thinking", label: "thinking blocks", css: "--cc5m" },
-  { key: "files", label: "file attachments", css: "--green" },
-  { key: "systemToolsBaseline", label: "system + tools + MCP + skills (residual)", css: "--yellow" },
+// Forensics segments — the anatomy of one turn's input, in narrative order.
+const SEGMENTS = [
+  { key: "currentMessage", cat: "msg", label: "your message", css: "--seg-msg", ico: "✍️" },
+  { key: "history", cat: "history", label: "history", css: "--seg-history", ico: "💬" },
+  { key: "toolResults", cat: "tools", label: "tool results", css: "--seg-tools", ico: "🔧" },
+  { key: "thinking", cat: "thinking", label: "thinking", css: "--seg-thinking", ico: "🧠" },
+  { key: "files", cat: "files", label: "files", css: "--seg-files", ico: "📎" },
+  { key: "systemToolsBaseline", cat: "baseline", label: "system + tools baseline", css: "--seg-baseline", ico: "🏗️" },
 ];
-
-const KIND_CSS = {
-  "your message (this turn)": "--pink",
-  baseline: "--yellow",
-  tool_result: "--cyan",
-  thinking: "--cc5m",
-  file: "--green",
-  user: "--output",
-  assistant: "--output",
+const CAT_META = {
+  msg: { label: "your message", css: "--seg-msg" },
+  history: { label: "conversation history", css: "--seg-history" },
+  tools: { label: "tool results", css: "--seg-tools" },
+  thinking: { label: "thinking", css: "--seg-thinking" },
+  files: { label: "files / attachments", css: "--seg-files" },
 };
+function catOf(it) {
+  if (it.kind === "baseline") return "baseline";
+  if (it.label === "your message (this turn)") return "msg";
+  if (it.kind === "tool_result") return "tools";
+  if (it.kind === "thinking") return "thinking";
+  if (it.kind === "file") return "files";
+  return "history"; // user + assistant history text
+}
 
 async function openAttribution(messageId) {
   const r = await (await fetch(`/api/turn/${encodeURIComponent(messageId)}/attribution`)).json();
   $("#attr").classList.remove("hidden");
   if (r.error) {
-    $("#attr-body").innerHTML = `<div class="note">Could not attribute: ${esc(r.error)}</div>`;
+    $("#attr-body").innerHTML = `<div class="note">Could not run forensics: ${esc(r.error)}</div>`;
     return;
   }
   const a = r.attribution;
   const total = r.totalInput || 1;
-  const rows = ATTR.map((c) => {
-    const v = a[c.key] || 0;
-    const pct = Math.min(100, (100 * v) / total);
-    return `<div class="attr-row">
-      <div class="k">${c.label}</div>
-      <div class="bar" style="width:${Math.max(0.5, pct)}%;background:var(${c.css})"></div>
-      <div class="v">${fmt(v)} · ${pct.toFixed(0)}%</div>
-    </div>`;
-  }).join("");
-  const warn = a.unreliable
-    ? `<div class="note">⚠ This turn's split is unreliable: the proxy tokenizer counted ${fmt(a.overcounted)} more visible tokens than the exact input. That usually means prior extended-thinking was stripped on resend (it sits in the transcript but isn't re-billed), so the baseline is shown as 0 rather than a fabricated number. The billing totals above are still exact.</div>`
-    : "";
+  const pc = (v) => (100 * (v || 0)) / total;
+  const segVals = SEGMENTS.map((s) => ({ ...s, v: a[s.key] || 0, pct: pc(a[s.key]) }));
+  const msgPct = pc(a.currentMessage);
 
-  // The actual content of every context segment — baseline first (the big one), then context order.
-  const items = (r.items || [])
-    .slice()
-    .sort((x, y) => (x.kind === "baseline" ? -1 : y.kind === "baseline" ? 1 : x.order - y.order));
-  const content = items
-    .map((it) => {
-      const css = KIND_CSS[it.label] || KIND_CSS[it.kind] || "--muted";
-      const pct = ((100 * it.tokens) / total).toFixed(1);
-      const meta = it.inLogs
-        ? `${fmt(it.chars)} chars${it.truncated ? " (truncated)" : ""} · ${(it.ts || "").slice(11, 19)}`
-        : `content not stored in logs`;
-      const body = it.inLogs
-        ? `<pre class="content">${esc(it.text) || "(empty)"}</pre>`
-        : `<div class="note">This is the standing scaffolding (system prompt + tool/MCP/skill schemas + memory). Claude Code does not write it into the transcript, so there is no text to show — its size is inferred as the residual: total input minus everything visible above.</div>`;
-      return `<details class="citem" ${it.kind === "baseline" ? "open" : ""}>
-        <summary>
-          <span class="badge" style="background:var(${css})"></span>
-          <span class="ck">${esc(it.label)}</span>
-          <span class="ctok">${fmt(it.tokens)} tok · ${pct}%</span>
-          <span class="cmeta">${esc(meta)}</span>
-        </summary>
-        ${body}
-      </details>`;
+  // 1. VERDICT — the one-sentence finding
+  const dominant = segVals.slice().sort((x, y) => y.v - x.v)[0];
+  const verdict =
+    `This turn sent <b>${fmt(r.totalInput)}</b> tokens to ${esc(r.model.replace("claude-", ""))}. ` +
+    (dominant.cat === "baseline"
+      ? `<b>${dominant.pct.toFixed(0)}%</b> was standing scaffolding you re-send every turn — your message was just <b>${msgPct.toFixed(1)}%</b>.`
+      : `Its largest slice was <b>${esc(dominant.label)}</b> at <b>${dominant.pct.toFixed(0)}%</b>.`);
+
+  // 2. GAUGE — the context window as one fuel bar
+  const shown = segVals.filter((s) => s.v > 0);
+  const gauge = shown
+    .map(
+      (s) =>
+        `<span style="width:${Math.max(0.4, s.pct)}%;background:var(${s.css})" title="${esc(s.label)}: ${fmt(s.v)} (${s.pct.toFixed(1)}%)">${s.pct >= 7 ? `<small>${s.pct.toFixed(0)}%</small>` : ""}</span>`,
+    )
+    .join("");
+  const gaugeLegend = shown
+    .map(
+      (s) =>
+        `<span class="gi"><span class="sw" style="background:var(${s.css})"></span>${s.ico} ${esc(s.label)} <b>${tk(s.v)}</b> · ${s.pct.toFixed(0)}%</span>`,
+    )
+    .join("");
+
+  // 3. LEVERS — auto-generated "what you could do about it"
+  const cacheReadPct = r.billing ? (100 * (r.billing.cacheRead || 0)) / total : 0;
+  const biggest = (r.items || []).filter((it) => it.inLogs).sort((x, y) => y.tokens - x.tokens)[0];
+  const levers = [
+    {
+      accent: "--seg-baseline", ico: "🏗️", big: `${pc(a.systemToolsBaseline).toFixed(0)}%`,
+      cap: `<b>${fmt(a.systemToolsBaseline)}</b> tokens of system prompt + tool/MCP/skill schemas + memory, re-sent every turn. Your biggest lever: trim MCP servers &amp; skills you don't need here.`,
+    },
+    {
+      accent: "--seg-msg", ico: "✍️", big: `${msgPct.toFixed(1)}%`,
+      cap: `<b>${fmt(a.currentMessage)}</b> tokens — the part you actually typed this turn.`,
+    },
+    {
+      accent: "--seg-tools", ico: "💾", big: `${cacheReadPct.toFixed(0)}%`,
+      cap: `of this turn's input was served from cache at <b>0.1×</b> price.${biggest ? ` Largest single block: ${esc(biggest.label)} (${fmt(biggest.tokens)} tok).` : ""}`,
+    },
+  ]
+    .map(
+      (l) =>
+        `<div class="lever" style="--accent:var(${l.accent})"><div class="ico">${l.ico}</div><div class="big">${l.big}</div><div class="cap">${l.cap}</div></div>`,
+    )
+    .join("");
+
+  // 4. EVIDENCE — the actual content, grouped by category, biggest first
+  const items = (r.items || []).filter((it) => it.inLogs);
+  const groups = ["msg", "tools", "files", "history", "thinking"]
+    .map((cat) => {
+      const list = items.filter((it) => catOf(it) === cat).sort((x, y) => y.tokens - x.tokens);
+      if (!list.length) return "";
+      const m = CAT_META[cat];
+      const groupTok = list.reduce((s, it) => s + it.tokens, 0);
+      const rows = list
+        .map((it) => {
+          const preview = esc((it.text || "").slice(0, 100).replace(/\s+/g, " ")) || "(empty)";
+          const meta = `${fmt(it.chars)} chars${it.truncated ? " · truncated" : ""}`;
+          return `<details class="citem">
+            <summary>
+              <span class="ck">${preview}</span>
+              <span class="ctok">${fmt(it.tokens)} tok</span>
+              <span class="cmeta">${esc(meta)}</span>
+            </summary>
+            <pre class="content">${esc(it.text) || "(empty)"}</pre>
+          </details>`;
+        })
+        .join("");
+      return `<div class="egroup">
+        <div class="egroup-h"><span class="sw" style="background:var(${m.css});color:var(${m.css})"></span>${esc(m.label)}<span class="gt">${list.length} block${list.length > 1 ? "s" : ""} · ${tk(groupTok)} tok</span></div>
+        ${rows}
+      </div>`;
     })
     .join("");
 
+  const warn = a.unreliable
+    ? `<div class="note">⚠ This turn's split is unreliable: the proxy tokenizer counted ${fmt(a.overcounted)} more visible tokens than the exact input — usually prior extended-thinking that was stripped on resend. The baseline is shown as 0 rather than a fabricated number; the billing totals are still exact.</div>`
+    : "";
+  const baselineNote = `<div class="note baseline-note">🏗️ The <b>baseline</b> has no readable content because Claude Code doesn't store the system prompt or tool schemas in the transcript. Its size is the honest residual — total input minus everything visible above.</div>`;
+
   $("#attr-body").innerHTML =
-    `<p class="mono" style="color:var(--muted)">Turn ${esc(messageId.slice(0, 12))} · ${esc(r.model)} · ${fmt(r.totalInput)} input tokens sent · tokenizer: ${esc(r.tokenizer || "")}</p>` +
-    rows +
+    `<p class="forensic-verdict">${verdict}</p>` +
+    `<p class="forensic-sub">turn ${esc(messageId.slice(0, 14))} · tokenizer ${esc(r.tokenizer || "")}</p>` +
+    `<div class="gauge-wrap"><div class="gauge">${gauge}</div><div class="gauge-legend">${gaugeLegend}</div></div>` +
     warn +
-    `<h3 class="content-h">The actual context that was tokenized <small>click any block to read it</small></h3>` +
-    content +
-    `<div class="note">${esc(r.note)}</div>`;
+    `<div class="levers">${levers}</div>` +
+    `<h3 class="evidence-h">The evidence <small>the actual context that was tokenized — click any block to read it</small></h3>` +
+    groups +
+    baselineNote;
   $("#attr").scrollIntoView({ behavior: "smooth" });
 }
 
@@ -223,5 +276,15 @@ function connectLive() {
 
 loadSummary();
 loadSessions();
-connectLive();
-setInterval(loadSummary, 20000);
+if (!location.search.includes("nolive")) {
+  connectLive();
+  setInterval(loadSummary, 20000);
+}
+// deep-link straight to a turn's forensics: /?turn=<message_id> (focuses on just that panel)
+const _turn = new URLSearchParams(location.search).get("turn");
+if (_turn) {
+  document.querySelectorAll("body > section, body > .two-col, #cards").forEach((el) => {
+    if (el.id !== "attr") el.style.display = "none";
+  });
+  openAttribution(_turn);
+}

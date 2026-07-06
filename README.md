@@ -2,7 +2,7 @@
 
 **A local, offline lens on your Claude Code usage.** No API key, no network, no cloud dashboard. tokana reads the session transcripts already sitting on your disk and tells you the truth about your tokens — down to the token — including the *actual content* that filled your context window.
 
-<!-- Numbers below are a real snapshot from the author's own machine, 2026-05-14 → 2026-07-06. Reproduce yours with `bun run index`. -->
+<!-- Numbers below are a real snapshot from the author's own machine. Reproduce yours with `bun run index`. -->
 
 ---
 
@@ -18,7 +18,7 @@ The results are uncomfortable in the best way. In one real turn, **65% of the in
 
 Seeing the numbers changes what you do next.
 
-## The snapshot that produced this README
+## A real snapshot from one machine
 
 | | |
 |---|---|
